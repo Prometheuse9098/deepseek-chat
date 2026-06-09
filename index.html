@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#007aff">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src https://api.deepseek.com https://*.deepseek.com; style-src 'unsafe-inline' 'self'; script-src 'unsafe-inline' 'self'; img-src 'self' data:;">
 <meta name="referrer" content="no-referrer">
 <title>DeepSeek Chat</title>
@@ -26,6 +28,7 @@
     --security-text: #e68a00;
     --chip-bg: #e8f0fe;
     --chip-text: #1d1d1f;
+    --search-highlight: #fff3cd;
   }
   [data-theme="dark"] {
     --bg: #1c1c1e;
@@ -44,6 +47,7 @@
     --security-text: #ffb340;
     --chip-bg: #1c2a3e;
     --chip-text: #f5f5f7;
+    --search-highlight: #3a3510;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
@@ -53,7 +57,7 @@
     transition: background 0.2s, color 0.2s;
   }
   .header {
-    background: var(--header-bg); padding: 10px 20px;
+    background: var(--header-bg); padding: 10px 16px;
     border-bottom: 1px solid var(--border);
     display: flex; align-items: center; justify-content: space-between;
     transition: background 0.2s, border-color 0.2s;
@@ -62,13 +66,38 @@
   .header-left h1 { font-weight: 600; font-size: 17px; }
   .header-left small { font-weight: 400; font-size: 11px; color: var(--text-secondary); }
   .header-right { display: flex; align-items: center; gap: 6px; }
-  .theme-btn {
+  .icon-btn {
     background: none; border: 1px solid var(--border); border-radius: 8px;
     width: 34px; height: 34px; cursor: pointer; font-size: 16px;
     display: flex; align-items: center; justify-content: center;
     transition: background 0.2s, border-color 0.2s;
   }
-  .theme-btn:active { opacity: 0.6; }
+  .icon-btn:active { opacity: 0.6; }
+
+  /* 搜索栏 */
+  .search-bar {
+    background: var(--card-bg); border-bottom: 1px solid var(--border);
+    padding: 0 16px; display: flex; align-items: center; gap: 8px;
+    height: 0; overflow: hidden; transition: height 0.2s, padding 0.2s;
+    transition: background 0.2s, border-color 0.2s;
+  }
+  .search-bar.open { height: 44px; padding: 6px 16px; }
+  .search-bar input {
+    flex: 1; border: none; background: var(--input-bg); border-radius: 8px;
+    padding: 6px 12px; font-size: 14px; outline: none; color: var(--text);
+  }
+  .search-bar input::placeholder { color: var(--text-secondary); }
+  .search-bar .match-count { font-size: 12px; color: var(--text-secondary); white-space: nowrap; }
+  .search-bar .close-btn {
+    background: none; border: none; font-size: 18px; cursor: pointer;
+    color: var(--text-secondary); padding: 4px;
+  }
+  .msg.search-highlight {
+    background: var(--search-highlight) !important;
+    box-shadow: 0 0 0 2px #007aff40;
+  }
+  .msg.user.search-highlight { background: #0056b3 !important; }
+
   #chat {
     flex: 1; overflow-y: auto; padding: 16px;
     display: flex; flex-direction: column; gap: 12px;
@@ -89,7 +118,6 @@
   .typing span:nth-child(3) { animation-delay: 0.4s; }
   @keyframes bounce { 0%,80%,100% { transform: scale(0.6); } 40% { transform: scale(1); } }
 
-  /* 文件预览区域 */
   .file-preview-bar {
     background: var(--card-bg); padding: 6px 14px; border-top: 1px solid var(--border);
     display: flex; gap: 8px; overflow-x: auto; min-height: 0;
@@ -125,9 +153,7 @@
     transition: background 0.2s, color 0.2s;
   }
   textarea::placeholder { color: var(--text-secondary); }
-  .input-actions {
-    display: flex; gap: 6px; align-items: flex-end; flex-shrink: 0;
-  }
+  .input-actions { display: flex; gap: 6px; align-items: flex-end; flex-shrink: 0; }
   .action-btn {
     background: none; border: 1px solid var(--border); border-radius: 50%;
     width: 42px; height: 42px; cursor: pointer; font-size: 18px;
@@ -144,6 +170,7 @@
   }
   .send-btn:disabled { opacity: 0.4; cursor: default; }
   .send-btn:active:not(:disabled) { opacity: 0.7; }
+
   .settings-bar {
     background: var(--settings-bg); padding: 10px 16px;
     border-top: 1px solid var(--settings-border);
@@ -151,13 +178,22 @@
     transition: background 0.2s, border-color 0.2s, color 0.2s;
   }
   .settings-row { display: flex; align-items: center; gap: 8px; }
-  .settings-row input {
+  .settings-row input, .settings-row select {
     flex: 1; border: 1px solid var(--settings-border); border-radius: 8px;
     padding: 6px 10px; font-size: 13px; outline: none;
     background: var(--input-bg); color: var(--text);
     transition: background 0.2s, border-color 0.2s, color 0.2s;
   }
-  .settings-row input:focus { border-color: #007aff; }
+  .settings-row select { appearance: auto; }
+  .settings-row input:focus, .settings-row select:focus { border-color: #007aff; }
+  .settings-textarea {
+    width: 100%; border: 1px solid var(--settings-border); border-radius: 8px;
+    padding: 8px 10px; font-size: 12px; font-family: inherit;
+    resize: vertical; min-height: 50px; max-height: 120px; outline: none;
+    background: var(--input-bg); color: var(--text);
+    transition: background 0.2s, border-color 0.2s, color 0.2s;
+  }
+  .settings-textarea:focus { border-color: #007aff; }
   .settings-toggle {
     background: none; border: none; color: #007aff; font-size: 13px;
     cursor: pointer; width: auto; height: auto; border-radius: 4px; padding: 4px 8px;
@@ -191,13 +227,22 @@
     <small>v1.0</small>
   </div>
   <div class="header-right">
-    <button class="theme-btn" id="themeBtn" title="切换主题">🌙</button>
+    <button class="icon-btn" id="searchBtn" title="搜索对话">🔍</button>
+    <button class="icon-btn" id="themeBtn" title="切换主题">🌙</button>
   </div>
 </div>
+
+<div class="search-bar" id="searchBar">
+  <input type="text" id="searchInput" placeholder="搜索对话内容..." autocomplete="off">
+  <span class="match-count" id="matchCount"></span>
+  <button class="close-btn" id="searchCloseBtn">✕</button>
+</div>
+
 <div id="chat">
   <div class="msg assistant">你好！我是 DeepSeek，有什么可以帮助你的？</div>
 </div>
 <div id="tokenTotal"></div>
+
 <div class="settings-bar hidden" id="settingsBar">
   <div class="settings-row">
     <span style="white-space:nowrap">🔑 API Key:</span>
@@ -208,6 +253,19 @@
     <span style="white-space:nowrap">🌐 API 地址:</span>
     <input type="text" id="apiUrlInput" value="https://api.deepseek.com" placeholder="https://api.deepseek.com">
   </div>
+  <div class="settings-row">
+    <span style="white-space:nowrap">🎭 预设角色:</span>
+    <select id="roleSelect">
+      <option value="">自定义</option>
+      <option value="translator">🌐 翻译助手</option>
+      <option value="coder">💻 代码助手</option>
+      <option value="writer">✍️ 写作助手</option>
+      <option value="teacher">📖 英语教师</option>
+      <option value="analyst">📊 数据分析师</option>
+    </select>
+  </div>
+  <div style="font-size:12px;color:var(--text-secondary)">💬 系统提示词（System Prompt）</div>
+  <textarea class="settings-textarea" id="systemPromptInput" placeholder="设置系统提示词，让 AI 按你的要求回复..."></textarea>
   <div class="settings-row" style="justify-content:space-between">
     <div style="display:flex;gap:8px">
       <button class="settings-toggle" id="saveSettingsBtn">保存</button>
@@ -223,6 +281,7 @@
     请不要将这个页面的地址分享给他人。
   </div>
 </div>
+
 <div class="file-preview-bar" id="filePreviewBar"></div>
 <div class="input-bar">
   <textarea id="input" rows="1" placeholder="输入消息..."></textarea>
@@ -253,13 +312,35 @@ const tokenTotalEl = document.getElementById('tokenTotal');
 const fileInput = document.getElementById('fileInput');
 const fileBtn = document.getElementById('fileBtn');
 const filePreviewBar = document.getElementById('filePreviewBar');
+const searchBtn = document.getElementById('searchBtn');
+const searchBar = document.getElementById('searchBar');
+const searchInput = document.getElementById('searchInput');
+const searchCloseBtn = document.getElementById('searchCloseBtn');
+const matchCount = document.getElementById('matchCount');
+const roleSelect = document.getElementById('roleSelect');
+const systemPromptInput = document.getElementById('systemPromptInput');
 
-// 已选择的文件列表
 let selectedFiles = [];
+let sessionTotalTokens = 0;
+
+// ========== 预设角色 ==========
+const ROLES = {
+  translator:  { name: '翻译助手', prompt: '你是一名专业的翻译官。请准确传达原文的意思和语气，保持语言流畅自然。当用户发送需要翻译的内容时，直接给出翻译结果，不需要额外解释。如果用户没有指定目标语言，默认翻译为中文。' },
+  coder:      { name: '代码助手', prompt: '你是一名资深的软件开发专家。擅长编写清晰、高效、可维护的代码，注重代码质量和安全性。请提供最佳实践建议，并解释关键的设计思路。' },
+  writer:     { name: '写作助手', prompt: '你是一名专业的写作助手。擅长帮助用户改进文字表达，包括润色文章、撰写内容、调整语气风格、纠正语法错误。请保持原文的核心意思和风格。' },
+  teacher:    { name: '英语教师', prompt: '你是一名有耐心的英语教师。请用简单易懂的方式帮助用户学习英语，包括语法解释、词汇用法、发音技巧和日常对话练习。当用户犯错时，温和地纠正并解释原因。' },
+  analyst:    { name: '数据分析师', prompt: '你是一名数据分析专家。擅长解释数据概念、分析方法和统计原理。请用清晰的语言帮助用户理解数据分析、可视化和机器学习相关内容，结合实际例子说明。' },
+};
+
+roleSelect.addEventListener('change', () => {
+  const role = ROLES[roleSelect.value];
+  if (role) {
+    systemPromptInput.value = role.prompt;
+  }
+});
 
 // ========== 主题切换 ==========
 let currentTheme = localStorage.getItem('deepseek_theme') || 'light';
-let sessionTotalTokens = 0;
 
 function applyTheme(theme) {
   document.documentElement.setAttribute('data-theme', theme);
@@ -273,7 +354,68 @@ themeBtn.addEventListener('click', () => {
   applyTheme(currentTheme === 'dark' ? 'light' : 'dark');
 });
 
-// ========== 安全配置常量 ==========
+// ========== 搜索 ==========
+searchBtn.addEventListener('click', () => {
+  searchBar.classList.toggle('open');
+  if (searchBar.classList.contains('open')) {
+    searchInput.focus();
+  } else {
+    clearSearch();
+  }
+});
+
+searchCloseBtn.addEventListener('click', () => {
+  searchBar.classList.remove('open');
+  clearSearch();
+});
+
+searchInput.addEventListener('input', doSearch);
+
+function clearSearch() {
+  searchInput.value = '';
+  matchCount.textContent = '';
+  document.querySelectorAll('.msg.search-highlight').forEach(el => el.classList.remove('search-highlight'));
+}
+
+function doSearch() {
+  const q = searchInput.value.trim().toLowerCase();
+  document.querySelectorAll('.msg.search-highlight').forEach(el => el.classList.remove('search-highlight'));
+
+  if (!q) {
+    matchCount.textContent = '';
+    return;
+  }
+
+  const msgs = chatEl.querySelectorAll('.msg');
+  let count = 0;
+  msgs.forEach(msg => {
+    if (msg.textContent.toLowerCase().includes(q)) {
+      msg.classList.add('search-highlight');
+      count++;
+    }
+  });
+
+  matchCount.textContent = count > 0 ? count + ' 条匹配' : '无匹配';
+
+  if (count > 0) {
+    const first = chatEl.querySelector('.msg.search-highlight');
+    if (first) first.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+}
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && searchBar.classList.contains('open')) {
+    searchBar.classList.remove('open');
+    clearSearch();
+  }
+  if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+    e.preventDefault();
+    searchBar.classList.add('open');
+    searchInput.focus();
+  }
+});
+
+// ========== 安全配置 ==========
 const ALLOWED_API_HOSTS = ['api.deepseek.com', 'api.deepseek.com.cn'];
 
 function isValidApiUrl(url) {
@@ -285,7 +427,7 @@ function isValidApiUrl(url) {
   }
 }
 
-// ========== 安全的存储读写 ==========
+// ========== 存储读写 ==========
 function getStoredKey() {
   const key = sessionStorage.getItem('deepseek_api_key');
   if (key) return key;
@@ -320,13 +462,20 @@ function setStoredUrl(url) {
 // ========== 从存储恢复 ==========
 apiKeyInput.value = getStoredKey();
 apiUrlInput.value = getStoredUrl();
+systemPromptInput.value = localStorage.getItem('deepseek_system_prompt') || '';
 
 if (localStorage.getItem('deepseek_session_only') === 'false') {
   sessionOnlyCheck.checked = false;
 }
 updateKeyStatusText();
 
-// ========== 切换 API Key 显示/隐藏 ==========
+// 恢复角色选择
+const savedRole = localStorage.getItem('deepseek_role') || '';
+if (savedRole && ROLES[savedRole]) {
+  roleSelect.value = savedRole;
+}
+
+// ========== API Key 切换显示 ==========
 let keyVisible = false;
 toggleKeyBtn.addEventListener('click', () => {
   keyVisible = !keyVisible;
@@ -353,9 +502,7 @@ sessionOnlyCheck.addEventListener('change', () => {
   updateKeyStatusText();
   localStorage.setItem('deepseek_session_only', sessionOnlyCheck.checked);
   const currentKey = apiKeyInput.value.trim();
-  if (currentKey) {
-    setStoredKey(currentKey);
-  }
+  if (currentKey) setStoredKey(currentKey);
 });
 
 // ========== 设置面板 ==========
@@ -367,10 +514,7 @@ saveSettingsBtn.addEventListener('click', () => {
   const key = apiKeyInput.value.trim();
   const url = apiUrlInput.value.trim();
 
-  if (!key) {
-    apiKeyInput.focus();
-    return;
-  }
+  if (!key) { apiKeyInput.focus(); return; }
 
   if (!isValidApiUrl(url)) {
     if (!confirm('⚠️ API 地址不在白名单中，继续保存？\n\n仅信任以下地址：\n' + ALLOWED_API_HOSTS.join('\n') + '\n\n输入任意 API 地址可能导致 Key 泄露给第三方。')) {
@@ -379,21 +523,26 @@ saveSettingsBtn.addEventListener('click', () => {
   }
 
   setStoredKey(key);
-  if (isValidApiUrl(url)) {
-    setStoredUrl(url);
-  }
+  if (isValidApiUrl(url)) setStoredUrl(url);
+
+  // 保存系统提示词和角色
+  localStorage.setItem('deepseek_system_prompt', systemPromptInput.value);
+  localStorage.setItem('deepseek_role', roleSelect.value);
 
   settingsBar.classList.add('hidden');
 });
 
-// ========== 清除所有本地数据 ==========
 clearDataBtn.addEventListener('click', () => {
-  if (confirm('确定清除所有数据？\n\n将清除保存的 API Key、API 地址和所有设置，同时重置 Token 计数。')) {
+  if (confirm('确定清除所有数据？\n\n将清除 API Key、API 地址、提示词、角色和设置。')) {
     removeStoredKey();
     localStorage.removeItem('deepseek_api_url');
     localStorage.removeItem('deepseek_session_only');
+    localStorage.removeItem('deepseek_system_prompt');
+    localStorage.removeItem('deepseek_role');
     apiKeyInput.value = '';
     apiUrlInput.value = 'https://api.deepseek.com';
+    systemPromptInput.value = '';
+    roleSelect.value = '';
     settingsBar.classList.add('hidden');
     sessionTotalTokens = 0;
     updateTokenTotal();
@@ -408,23 +557,16 @@ inputEl.addEventListener('input', () => {
 
 // ========== 文件上传 ==========
 const TEXT_EXTENSIONS = ['txt','md','json','js','py','ts','html','css','csv','xml','yaml','yml','log','sh'];
-const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
+const MAX_FILE_SIZE = 20 * 1024 * 1024;
 
 fileBtn.addEventListener('click', () => fileInput.click());
 
 fileInput.addEventListener('change', async (e) => {
   const files = Array.from(e.target.files);
   for (const file of files) {
-    if (file.size > MAX_FILE_SIZE) {
-      alert('文件 "' + file.name + '" 超过 20MB 限制，已跳过');
-      continue;
-    }
-    try {
-      const fileData = await readFile(file);
-      selectedFiles.push(fileData);
-    } catch(err) {
-      alert('读取文件失败: ' + file.name);
-    }
+    if (file.size > MAX_FILE_SIZE) { alert('文件 "' + file.name + '" 超过 20MB 限制，已跳过'); continue; }
+    try { selectedFiles.push(await readFile(file)); }
+    catch(err) { alert('读取文件失败: ' + file.name); }
   }
   fileInput.value = '';
   renderFilePreviews();
@@ -437,17 +579,11 @@ function readFile(file) {
     const isText = TEXT_EXTENSIONS.includes(ext);
 
     if (isImage) {
-      const reader = new FileReader();
-      reader.onload = () => resolve({ name: file.name, size: file.size, type: 'image', data: reader.result, ext: ext });
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
+      const r = new FileReader(); r.onload = () => resolve({ name: file.name, size: file.size, type: 'image', data: r.result, ext }); r.onerror = reject; r.readAsDataURL(file);
     } else if (isText) {
-      const reader = new FileReader();
-      reader.onload = () => resolve({ name: file.name, size: file.size, type: 'text', data: reader.result, ext: ext });
-      reader.onerror = reject;
-      reader.readAsText(file);
+      const r = new FileReader(); r.onload = () => resolve({ name: file.name, size: file.size, type: 'text', data: r.result, ext }); r.onerror = reject; r.readAsText(file);
     } else {
-      resolve({ name: file.name, size: file.size, type: 'unknown', data: null, ext: ext });
+      resolve({ name: file.name, size: file.size, type: 'unknown', data: null, ext });
     }
   });
 }
@@ -458,11 +594,6 @@ function formatFileSize(bytes) {
   return (bytes/(1024*1024)).toFixed(1) + 'MB';
 }
 
-function getFileIcon(f) {
-  if (f.type === 'image') return '🖼️';
-  return '📄';
-}
-
 function renderFilePreviews() {
   filePreviewBar.innerHTML = '';
   selectedFiles.forEach((f, i) => {
@@ -470,39 +601,19 @@ function renderFilePreviews() {
     chip.className = 'file-chip';
 
     if (f.type === 'image') {
-      const img = document.createElement('img');
-      img.src = f.data;
-      img.alt = f.name;
-      chip.appendChild(img);
+      const img = document.createElement('img'); img.src = f.data; img.alt = f.name; chip.appendChild(img);
     } else {
-      const icon = document.createElement('span');
-      icon.className = 'file-icon';
-      icon.textContent = getFileIcon(f);
-      chip.appendChild(icon);
+      const icon = document.createElement('span'); icon.className = 'file-icon'; icon.textContent = '📄'; chip.appendChild(icon);
     }
 
-    const info = document.createElement('div');
-    info.className = 'file-info';
-    const nameSpan = document.createElement('div');
-    nameSpan.className = 'file-name';
-    nameSpan.textContent = f.name;
-    const sizeSpan = document.createElement('div');
-    sizeSpan.className = 'file-size';
-    sizeSpan.textContent = formatFileSize(f.size);
-    info.appendChild(nameSpan);
-    info.appendChild(sizeSpan);
-    chip.appendChild(info);
+    const info = document.createElement('div'); info.className = 'file-info';
+    const nameSpan = document.createElement('div'); nameSpan.className = 'file-name'; nameSpan.textContent = f.name;
+    const sizeSpan = document.createElement('div'); sizeSpan.className = 'file-size'; sizeSpan.textContent = formatFileSize(f.size);
+    info.appendChild(nameSpan); info.appendChild(sizeSpan); chip.appendChild(info);
 
-    const rmBtn = document.createElement('button');
-    rmBtn.className = 'file-remove';
-    rmBtn.textContent = '✕';
-    rmBtn.dataset.index = i;
-    rmBtn.addEventListener('click', () => {
-      selectedFiles.splice(i, 1);
-      renderFilePreviews();
-    });
+    const rmBtn = document.createElement('button'); rmBtn.className = 'file-remove'; rmBtn.textContent = '✕';
+    rmBtn.addEventListener('click', () => { selectedFiles.splice(i, 1); renderFilePreviews(); });
     chip.appendChild(rmBtn);
-
     filePreviewBar.appendChild(chip);
   });
 }
@@ -516,20 +627,14 @@ function addMessage(role, text, tokens, files) {
   textSpan.textContent = text;
   div.appendChild(textSpan);
 
-  // 显示附件信息
   if (files && files.length > 0) {
-    const fileInfo = document.createElement('div');
-    fileInfo.className = 'file-attach';
-    fileInfo.textContent = files.map(f => {
-      if (f.type === 'image') return '🖼️ ' + f.name;
-      return '📄 ' + f.name;
-    }).join('  ');
+    const fileInfo = document.createElement('div'); fileInfo.className = 'file-attach';
+    fileInfo.textContent = files.map(f => (f.type === 'image' ? '🖼️ ' : '📄 ') + f.name).join('  ');
     div.appendChild(fileInfo);
   }
 
   if (tokens) {
-    const info = document.createElement('div');
-    info.className = 'token-info';
+    const info = document.createElement('div'); info.className = 'token-info';
     const parts = [];
     if (tokens.prompt !== undefined) parts.push('输入 ' + tokens.prompt + ' tokens');
     if (tokens.completion !== undefined) parts.push('输出 ' + tokens.completion + ' tokens');
@@ -544,23 +649,17 @@ function addMessage(role, text, tokens, files) {
 }
 
 function updateTokenTotal() {
-  tokenTotalEl.textContent = sessionTotalTokens > 0
-    ? '本次会话累计消耗 ' + sessionTotalTokens + ' tokens'
-    : '';
+  tokenTotalEl.textContent = sessionTotalTokens > 0 ? '本次会话累计消耗 ' + sessionTotalTokens + ' tokens' : '';
 }
 
 function showTyping() {
-  const div = document.createElement('div');
-  div.className = 'typing';
-  div.id = 'typingIndicator';
+  const div = document.createElement('div'); div.className = 'typing'; div.id = 'typingIndicator';
   div.innerHTML = '<span></span><span></span><span></span>';
-  chatEl.appendChild(div);
-  chatEl.scrollTop = chatEl.scrollHeight;
+  chatEl.appendChild(div); chatEl.scrollTop = chatEl.scrollHeight;
 }
 
 function removeTyping() {
-  const el = document.getElementById('typingIndicator');
-  if (el) el.remove();
+  const el = document.getElementById('typingIndicator'); if (el) el.remove();
 }
 
 // ========== 发送消息 ==========
@@ -571,63 +670,47 @@ async function sendMessage() {
   const apiKey = apiKeyInput.value.trim();
   const apiUrl = apiUrlInput.value.trim();
 
-  if (!apiKey) {
-    settingsBar.classList.remove('hidden');
-    apiKeyInput.focus();
-    return;
-  }
-
+  if (!apiKey) { settingsBar.classList.remove('hidden'); apiKeyInput.focus(); return; }
   if (!isValidApiUrl(apiUrl)) {
     addMessage('assistant', '❌ 无效的 API 地址。请点击 ⚙️ 设置正确的 API 地址（api.deepseek.com）');
-    settingsBar.classList.remove('hidden');
-    return;
+    settingsBar.classList.remove('hidden'); return;
   }
 
-  // 构建消息内容
+  // 构建消息
   let userContent;
   const hasImages = selectedFiles.some(f => f.type === 'image');
 
   if (hasImages) {
-    // 多模态：使用 content array
     userContent = [];
     if (text) userContent.push({ type: 'text', text: text });
     for (const f of selectedFiles) {
-      if (f.type === 'image') {
-        userContent.push({ type: 'image_url', image_url: { url: f.data } });
-      } else if (f.type === 'text') {
-        userContent.push({ type: 'text', text: '附件 [' + f.name + ']:\n' + f.data });
-      } else {
-        userContent.push({ type: 'text', text: '[附件: ' + f.name + '] (' + formatFileSize(f.size) + ')' });
-      }
+      if (f.type === 'image') userContent.push({ type: 'image_url', image_url: { url: f.data } });
+      else if (f.type === 'text') userContent.push({ type: 'text', text: '附件 [' + f.name + ']:\n' + f.data });
+      else userContent.push({ type: 'text', text: '[附件: ' + f.name + '] (' + formatFileSize(f.size) + ')' });
     }
   } else {
-    // 纯文本
     userContent = text;
     const fileTexts = [];
     for (const f of selectedFiles) {
-      if (f.type === 'text') {
-        fileTexts.push('附件 [' + f.name + ']:\n' + f.data);
-      } else {
-        fileTexts.push('[附件: ' + f.name + '] (' + formatFileSize(f.size) + ')');
-      }
+      if (f.type === 'text') fileTexts.push('附件 [' + f.name + ']:\n' + f.data);
+      else fileTexts.push('[附件: ' + f.name + '] (' + formatFileSize(f.size) + ')');
     }
-    if (fileTexts.length > 0) {
-      userContent = text ? text + '\n\n---\n' + fileTexts.join('\n\n') : fileTexts.join('\n\n');
-    }
+    if (fileTexts.length > 0) userContent = text ? text + '\n\n---\n' + fileTexts.join('\n\n') : fileTexts.join('\n\n');
   }
 
   const filesSnapshot = selectedFiles.slice();
   const userText = text || '(文件已上传)';
-  inputEl.value = '';
-  inputEl.style.height = 'auto';
+  inputEl.value = ''; inputEl.style.height = 'auto';
 
   addMessage('user', userText, null, filesSnapshot);
-  showTyping();
-  sendBtn.disabled = true;
+  showTyping(); sendBtn.disabled = true;
+  selectedFiles = []; renderFilePreviews();
 
-  // 发送后清除文件
-  selectedFiles = [];
-  renderFilePreviews();
+  // 构建请求消息列表
+  const systemPrompt = systemPromptInput.value.trim();
+  const messages = [];
+  if (systemPrompt) messages.push({ role: 'system', content: systemPrompt });
+  messages.push({ role: 'user', content: userContent });
 
   const baseUrl = new URL(apiUrl);
   const endpoint = new URL('/v1/chat/completions', baseUrl).toString();
@@ -635,52 +718,29 @@ async function sendMessage() {
   try {
     const resp = await fetch(endpoint, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + apiKey
-      },
-      body: JSON.stringify({
-        model: 'deepseek-chat',
-        messages: [{ role: 'user', content: userContent }],
-        stream: false
-      })
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
+      body: JSON.stringify({ model: 'deepseek-chat', messages, stream: false })
     });
 
     removeTyping();
 
     if (!resp.ok) {
-      const errStatus = resp.status;
-      let errMsg;
-      try {
-        const errBody = await resp.text();
-        if (errBody.length < 1000) {
-          const errJson = JSON.parse(errBody);
-          errMsg = errJson.error?.message;
-        }
-      } catch(e) {}
+      let errMsg; const errStatus = resp.status;
+      try { const errBody = await resp.text(); if (errBody.length < 1000) { const j = JSON.parse(errBody); errMsg = j.error?.message; } } catch(e) {}
       addMessage('assistant', '❌ 请求失败 (' + errStatus + ')' + (errMsg ? ': ' + errMsg : ''));
-      sendBtn.disabled = false;
-      return;
+      sendBtn.disabled = false; return;
     }
 
     const data = await resp.json();
     const reply = data.choices?.[0]?.message?.content || '(无返回内容)';
 
     const usage = data.usage;
-    const promptTokens = usage?.prompt_tokens;
-    const completionTokens = usage?.completion_tokens;
-    const totalTokens = usage?.total_tokens;
-
-    const tokens = (promptTokens !== undefined && completionTokens !== undefined)
-      ? { prompt: promptTokens, completion: completionTokens, total: totalTokens }
-      : null;
+    const p = usage?.prompt_tokens, c = usage?.completion_tokens, t = usage?.total_tokens;
+    const tokens = (p !== undefined && c !== undefined) ? { prompt: p, completion: c, total: t } : null;
 
     addMessage('assistant', reply, tokens);
 
-    if (totalTokens !== undefined) {
-      sessionTotalTokens += totalTokens;
-      updateTokenTotal();
-    }
+    if (t !== undefined) { sessionTotalTokens += t; updateTokenTotal(); }
 
   } catch (err) {
     removeTyping();
@@ -691,11 +751,13 @@ async function sendMessage() {
 
 sendBtn.addEventListener('click', sendMessage);
 inputEl.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault();
-    sendMessage();
-  }
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
 });
+
+// ========== PWA 注册 ==========
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
 
 })();
 </script>

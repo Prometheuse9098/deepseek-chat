@@ -1,0 +1,13 @@
+{
+  "name": "DeepSeek Chat",
+  "short_name": "DS Chat",
+  "description": "DeepSeek API 聊天助手",
+  "start_url": "/deepseek-chat/",
+  "display": "standalone",
+  "background_color": "#f0f0f5",
+  "theme_color": "#007aff",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "/deepseek-chat/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
