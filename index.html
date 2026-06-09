@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src https://api.deepseek.com https://*.deepseek.com; style-src 'unsafe-inline' 'self'; script-src 'self';">
+<meta name="referrer" content="no-referrer">
 <title>DeepSeek Chat</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -50,21 +52,36 @@
   button:active:not(:disabled) { opacity: 0.7; }
   .settings-bar {
     background: #fff; padding: 10px 16px; border-top: 1px solid #e5e5ea;
-    display: flex; align-items: center; gap: 8px; font-size: 13px;
+    display: flex; flex-direction: column; gap: 8px; font-size: 13px;
   }
-  .settings-bar input {
+  .settings-row {
+    display: flex; align-items: center; gap: 8px;
+  }
+  .settings-row input {
     flex: 1; border: 1px solid #e5e5ea; border-radius: 8px;
     padding: 6px 10px; font-size: 13px; outline: none;
   }
-  .settings-bar input:focus { border-color: #007aff; }
+  .settings-row input:focus { border-color: #007aff; }
   .settings-toggle {
     background: none; border: none; color: #007aff; font-size: 13px;
     cursor: pointer; width: auto; height: auto; border-radius: 4px;
     padding: 4px 8px;
   }
-  pre { background: #f4f4f6; border-radius: 8px; padding: 12px; overflow-x: auto; font-size: 13px; margin: 8px 0; }
+  .danger-btn {
+    background: #ff3b30; color: #fff; border: none;
+    border-radius: 8px; padding: 6px 12px; font-size: 12px; cursor: pointer;
+  }
+  .danger-btn:active { opacity: 0.7; }
+  .security-note {
+    font-size: 11px; color: #8e8e93; line-height: 1.4;
+    padding: 6px 8px; background: #fff2e0; border-radius: 6px;
+  }
+  .security-note strong { color: #e68a00; }
+  pre { background: #f4f4f6; border-radius: 8px; padding: 12px; overflow-x: auto; font-size: 13px; margin: 8px 0; white-space: pre-wrap; }
   code { font-family: "SF Mono", Menlo, monospace; }
   .hidden { display: none; }
+  .key-visible { font-size: 12px; color: #007aff; cursor: pointer; }
+  .small-btn { width: auto; height: auto; padding: 6px 12px; border-radius: 8px; font-size: 13px; }
 </style>
 </head>
 <body>
@@ -75,11 +92,29 @@
   <div class="msg assistant">你好！我是 DeepSeek，有什么可以帮助你的？</div>
 </div>
 <div class="settings-bar hidden" id="settingsBar">
-  <span style="white-space:nowrap">API Key:</span>
-  <input type="password" id="apiKeyInput" placeholder="sk-...">
-  <span style="white-space:nowrap">API 地址:</span>
-  <input type="text" id="apiUrlInput" value="https://api.deepseek.com">
-  <button class="settings-toggle" id="saveSettingsBtn">保存</button>
+  <div class="settings-row">
+    <span style="white-space:nowrap">🔑 API Key:</span>
+    <input type="password" id="apiKeyInput" placeholder="sk-..." autocomplete="off">
+    <span class="key-visible" id="toggleKeyBtn">显示</span>
+  </div>
+  <div class="settings-row">
+    <span style="white-space:nowrap">🌐 API 地址:</span>
+    <input type="text" id="apiUrlInput" value="https://api.deepseek.com" placeholder="https://api.deepseek.com">
+  </div>
+  <div class="settings-row" style="justify-content:space-between">
+    <div style="display:flex;gap:8px">
+      <button class="settings-toggle" id="saveSettingsBtn">保存</button>
+      <button class="danger-btn" id="clearDataBtn">清除所有数据</button>
+    </div>
+    <label style="display:flex;align-items:center;gap:4px;font-size:12px">
+      <input type="checkbox" id="sessionOnlyCheck" checked> 关闭标签页自动清除 Key
+    </label>
+  </div>
+  <div class="security-note" id="securityNote">
+    <strong>⚠️ 安全提醒：</strong>API Key 仅保存在此浏览器中。
+    <span id="keyStatus">默认保存在内存中，关闭标签页后自动清除。</span>
+    请不要将这个页面的地址分享给他人。
+  </div>
 </div>
 <div class="input-bar">
   <textarea id="input" rows="1" placeholder="输入消息..." style="border:1px solid #e5e5ea"></textarea>
@@ -88,38 +123,162 @@
 </div>
 
 <script>
+(function() {
 const chatEl = document.getElementById('chat');
 const inputEl = document.getElementById('input');
 const sendBtn = document.getElementById('sendBtn');
 const settingsBar = document.getElementById('settingsBar');
 const toggleSettingsBtn = document.getElementById('toggleSettingsBtn');
 const saveSettingsBtn = document.getElementById('saveSettingsBtn');
+const clearDataBtn = document.getElementById('clearDataBtn');
 const apiKeyInput = document.getElementById('apiKeyInput');
 const apiUrlInput = document.getElementById('apiUrlInput');
+const toggleKeyBtn = document.getElementById('toggleKeyBtn');
+const sessionOnlyCheck = document.getElementById('sessionOnlyCheck');
+const keyStatus = document.getElementById('keyStatus');
 
-// 从 localStorage 恢复
-apiKeyInput.value = localStorage.getItem('deepseek_api_key') || '';
-apiUrlInput.value = localStorage.getItem('deepseek_api_url') || 'https://api.deepseek.com';
+// ========== 安全配置常量 ==========
+const ALLOWED_API_HOSTS = ['api.deepseek.com', 'api.deepseek.com.cn'];
 
+// ========== 安全的 API URL 校验 ==========
+function isValidApiUrl(url) {
+  try {
+    const parsed = new URL(url);
+    return ALLOWED_API_HOSTS.includes(parsed.hostname) && parsed.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
+// ========== 安全的存储读写 ==========
+function getStoredKey() {
+  // 优先从 sessionStorage 读取（更安全，关闭标签页即清除）
+  const key = sessionStorage.getItem('deepseek_api_key');
+  if (key) return key;
+  // 降级到 localStorage（用户可关闭 sessionOnly 选项）
+  if (!sessionOnlyCheck.checked) {
+    return localStorage.getItem('deepseek_api_key') || '';
+  }
+  return '';
+}
+
+function setStoredKey(key) {
+  if (sessionOnlyCheck.checked) {
+    sessionStorage.setItem('deepseek_api_key', key);
+    localStorage.removeItem('deepseek_api_key');
+  } else {
+    localStorage.setItem('deepseek_api_key', key);
+  }
+}
+
+function removeStoredKey() {
+  sessionStorage.removeItem('deepseek_api_key');
+  localStorage.removeItem('deepseek_api_key');
+}
+
+function getStoredUrl() {
+  return localStorage.getItem('deepseek_api_url') || 'https://api.deepseek.com';
+}
+
+function setStoredUrl(url) {
+  localStorage.setItem('deepseek_api_url', url);
+}
+
+// ========== 从存储恢复 ==========
+apiKeyInput.value = getStoredKey();
+apiUrlInput.value = getStoredUrl();
+
+// 恢复 sessionOnly 设置
+if (localStorage.getItem('deepseek_session_only') === 'false') {
+  sessionOnlyCheck.checked = false;
+}
+updateKeyStatusText();
+
+// ========== 切换 API Key 显示/隐藏 ==========
+let keyVisible = false;
+toggleKeyBtn.addEventListener('click', () => {
+  keyVisible = !keyVisible;
+  apiKeyInput.type = keyVisible ? 'text' : 'password';
+  toggleKeyBtn.textContent = keyVisible ? '隐藏' : '显示';
+  // 3 秒后自动隐藏
+  if (keyVisible) {
+    setTimeout(() => {
+      apiKeyInput.type = 'password';
+      keyVisible = false;
+      toggleKeyBtn.textContent = '显示';
+    }, 3000);
+  }
+});
+
+function updateKeyStatusText() {
+  if (sessionOnlyCheck.checked) {
+    keyStatus.textContent = '关闭标签页后自动清除。';
+  } else {
+    keyStatus.textContent = '保存在 localStorage 中，关闭浏览器也不会清除。建议仅在私人设备使用。';
+  }
+}
+
+sessionOnlyCheck.addEventListener('change', () => {
+  updateKeyStatusText();
+  localStorage.setItem('deepseek_session_only', sessionOnlyCheck.checked);
+  // 切换存储方式
+  const currentKey = apiKeyInput.value.trim();
+  if (currentKey) {
+    setStoredKey(currentKey);
+  }
+});
+
+// ========== 设置面板 ==========
 toggleSettingsBtn.addEventListener('click', () => {
   settingsBar.classList.toggle('hidden');
 });
 
 saveSettingsBtn.addEventListener('click', () => {
-  localStorage.setItem('deepseek_api_key', apiKeyInput.value.trim());
-  localStorage.setItem('deepseek_api_url', apiUrlInput.value.trim());
+  const key = apiKeyInput.value.trim();
+  const url = apiUrlInput.value.trim();
+
+  if (!key) {
+    apiKeyInput.focus();
+    return;
+  }
+
+  // 验证 API URL
+  if (!isValidApiUrl(url)) {
+    if (!confirm('⚠️ API 地址不在白名单中，继续保存？\n\n仅信任以下地址：\n' + ALLOWED_API_HOSTS.join('\n') + '\n\n输入任意 API 地址可能导致 Key 泄露给第三方。')) {
+      return;
+    }
+  }
+
+  setStoredKey(key);
+  if (isValidApiUrl(url)) {
+    setStoredUrl(url);
+  }
+
   settingsBar.classList.add('hidden');
 });
 
-// 自动调整输入框高度
+// ========== 清除所有本地数据 ==========
+clearDataBtn.addEventListener('click', () => {
+  if (confirm('确定清除所有数据？\n\n将清除保存的 API Key、API 地址和所有设置。')) {
+    removeStoredKey();
+    localStorage.removeItem('deepseek_api_url');
+    localStorage.removeItem('deepseek_session_only');
+    apiKeyInput.value = '';
+    apiUrlInput.value = 'https://api.deepseek.com';
+    settingsBar.classList.add('hidden');
+  }
+});
+
+// ========== 输入框 ==========
 inputEl.addEventListener('input', () => {
   inputEl.style.height = 'auto';
   inputEl.style.height = inputEl.scrollHeight + 'px';
 });
 
+// ========== 安全的添加消息（使用 textContent，防 XSS） ==========
 function addMessage(role, text) {
   const div = document.createElement('div');
-  div.className = `msg ${role}`;
+  div.className = 'msg ' + role.replace(/[^a-z]/g, '');
   div.textContent = text;
   chatEl.appendChild(div);
   chatEl.scrollTop = chatEl.scrollHeight;
@@ -129,6 +288,7 @@ function showTyping() {
   const div = document.createElement('div');
   div.className = 'typing';
   div.id = 'typingIndicator';
+  // 安全的 innerHTML（只包含我们控制的静态字符）
   div.innerHTML = '<span></span><span></span><span></span>';
   chatEl.appendChild(div);
   chatEl.scrollTop = chatEl.scrollHeight;
@@ -139,6 +299,7 @@ function removeTyping() {
   if (el) el.remove();
 }
 
+// ========== 发送消息 ==========
 async function sendMessage() {
   const text = inputEl.value.trim();
   if (!text) return;
@@ -152,17 +313,24 @@ async function sendMessage() {
     return;
   }
 
+  if (!isValidApiUrl(apiUrl)) {
+    addMessage('assistant', '❌ 无效的 API 地址。请点击 ⚙️ 设置正确的 API 地址（api.deepseek.com）');
+    settingsBar.classList.remove('hidden');
+    return;
+  }
+
   inputEl.value = '';
   inputEl.style.height = 'auto';
   addMessage('user', text);
   showTyping();
   sendBtn.disabled = true;
 
-  // 构建消息历史（取最近 20 条）
-  const messages = [{ role: 'user', content: text }];
+  // 安全提取 URL（防止字符串拼接注入）
+  const baseUrl = new URL(apiUrl);
+  const endpoint = new URL('/v1/chat/completions', baseUrl).toString();
 
   try {
-    const resp = await fetch(apiUrl + '/v1/chat/completions', {
+    const resp = await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -170,7 +338,7 @@ async function sendMessage() {
       },
       body: JSON.stringify({
         model: 'deepseek-chat',
-        messages: messages,
+        messages: [{ role: 'user', content: text }],
         stream: false
       })
     });
@@ -178,13 +346,18 @@ async function sendMessage() {
     removeTyping();
 
     if (!resp.ok) {
-      const errBody = await resp.text();
-      let errMsg = `请求失败 (${resp.status})`;
+      // 安全提取错误信息（不包含敏感数据）
+      const errStatus = resp.status;
+      let errMsg;
       try {
-        const errJson = JSON.parse(errBody);
-        errMsg = errJson.error?.message || errMsg;
+        const errBody = await resp.text();
+        // 限制错误体大小，防止恶意响应
+        if (errBody.length < 1000) {
+          const errJson = JSON.parse(errBody);
+          errMsg = errJson.error?.message;
+        }
       } catch(e) {}
-      addMessage('assistant', '❌ ' + errMsg);
+      addMessage('assistant', '❌ 请求失败 (' + errStatus + ')' + (errMsg ? ': ' + errMsg : ''));
       sendBtn.disabled = false;
       return;
     }
@@ -194,7 +367,8 @@ async function sendMessage() {
     addMessage('assistant', reply);
   } catch (err) {
     removeTyping();
-    addMessage('assistant', '❌ 网络错误: ' + err.message);
+    // 不向用户暴露具体网络错误细节（防信息泄露）
+    addMessage('assistant', '❌ 网络请求失败，请检查网络连接后重试。');
   }
   sendBtn.disabled = false;
 }
@@ -206,6 +380,8 @@ inputEl.addEventListener('keydown', (e) => {
     sendMessage();
   }
 });
+
+})();
 </script>
 </body>
 </html>
