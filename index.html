@@ -6,6 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="manifest" href="manifest.json">
+<link rel="preconnect" href="https://api.deepseek.com">
 <meta name="theme-color" content="#007aff">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src https://api.deepseek.com https://*.deepseek.com; style-src 'unsafe-inline' 'self'; script-src 'unsafe-inline' 'self'; img-src 'self' data:;">
 <meta name="referrer" content="no-referrer">
@@ -29,6 +30,7 @@
     --chip-bg: #e8f0fe;
     --chip-text: #1d1d1f;
     --search-highlight: #fff3cd;
+    --dialog-overlay: rgba(0,0,0,0.3);
   }
   [data-theme="dark"] {
     --bg: #1c1c1e;
@@ -48,10 +50,10 @@
     --chip-bg: #1c2a3e;
     --chip-text: #f5f5f7;
     --search-highlight: #3a3510;
+    --dialog-overlay: rgba(0,0,0,0.6);
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
-  /* ===== 全局 ===== */
   body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     background: var(--bg); color: var(--text);
@@ -100,16 +102,11 @@
     & input {
       flex: 1; border: none; background: var(--input-bg); border-radius: 8px;
       padding: 6px 12px; font-size: 14px; outline: none; color: var(--text);
-
       &::placeholder { color: var(--text-secondary); }
     }
 
     & .match-count { font-size: 12px; color: var(--text-secondary); white-space: nowrap; }
-
-    & .close-btn {
-      background: none; border: none; font-size: 18px; cursor: pointer;
-      color: var(--text-secondary); padding: 4px;
-    }
+    & .close-btn { background: none; border: none; font-size: 18px; cursor: pointer; color: var(--text-secondary); padding: 4px; }
   }
 
   /* ===== 聊天区域 ===== */
@@ -122,6 +119,7 @@
   .msg {
     max-width: 85%; padding: 12px 16px; border-radius: 18px;
     font-size: 15px; line-height: 1.5; word-break: break-word;
+    cursor: pointer; user-select: none; -webkit-user-select: none;
 
     &.user {
       align-self: flex-end; background: #007aff; color: #fff;
@@ -141,20 +139,16 @@
       transition: background 0.2s, color 0.2s;
     }
 
-    /* 入场动画 */
     opacity: 1; transform: translateY(0);
     transition: opacity 0.25s ease, transform 0.25s ease;
-
-    @starting-style {
-      opacity: 0;
-      transform: translateY(8px);
-    }
+    @starting-style { opacity: 0; transform: translateY(8px); }
   }
+
+  .msg:active { opacity: 0.7; }
 
   .msg.search-highlight {
     background: var(--search-highlight) !important;
     box-shadow: 0 0 0 2px #007aff40;
-
     &.user { background: #0056b3 !important; }
   }
 
@@ -174,23 +168,17 @@
     & span {
       width: 8px; height: 8px; background: #007aff;
       border-radius: 50%; animation: bounce 1.2s infinite;
-
       &:nth-child(2) { animation-delay: 0.2s; }
       &:nth-child(3) { animation-delay: 0.4s; }
     }
   }
-
-  @keyframes bounce {
-    0%, 80%, 100% { transform: scale(0.6); }
-    40% { transform: scale(1); }
-  }
+  @keyframes bounce { 0%,80%,100% { transform: scale(0.6); } 40% { transform: scale(1); } }
 
   /* ===== 文件预览 ===== */
   .file-preview-bar {
     background: var(--card-bg); padding: 6px 14px; border-top: 1px solid var(--border);
     display: flex; gap: 8px; overflow-x: auto; min-height: 0;
     transition: background 0.2s, border-color 0.2s, padding 0.2s;
-
     &:empty { padding: 0; }
   }
 
@@ -205,13 +193,7 @@
     & .file-info { overflow: hidden; }
     & .file-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 11px; }
     & .file-size { font-size: 10px; opacity: 0.6; }
-
-    & .file-remove {
-      cursor: pointer; font-size: 14px; opacity: 0.5; flex-shrink: 0;
-      background: none; border: none; color: inherit; padding: 0 2px;
-
-      &:hover { opacity: 1; }
-    }
+    & .file-remove { cursor: pointer; font-size: 14px; opacity: 0.5; flex-shrink: 0; background: none; border: none; color: inherit; padding: 0 2px; &:hover { opacity: 1; } }
   }
 
   /* ===== 输入栏 ===== */
@@ -220,16 +202,13 @@
     display: flex; gap: 8px; align-items: flex-end;
     transition: background 0.2s, border-color 0.2s;
 
-    &:has(textarea:not(:placeholder-shown)) .send-btn {
-      opacity: 1;
-    }
+    &:has(textarea:not(:placeholder-shown)) .send-btn { opacity: 1; }
 
     & textarea {
       flex: 1; border: none; background: var(--input-bg); border-radius: 20px;
       padding: 10px 16px; font-size: 16px; font-family: inherit;
       resize: none; max-height: 120px; outline: none; color: var(--text);
       transition: background 0.2s, color 0.2s;
-
       &::placeholder { color: var(--text-secondary); }
     }
   }
@@ -241,7 +220,6 @@
     width: 42px; height: 42px; cursor: pointer; font-size: 18px;
     display: flex; align-items: center; justify-content: center;
     color: var(--text-secondary); transition: background 0.2s, border-color 0.2s;
-
     &:active { opacity: 0.6; }
   }
 
@@ -251,17 +229,25 @@
     font-size: 18px; cursor: pointer;
     display: flex; align-items: center; justify-content: center;
     transition: opacity 0.2s;
-
     &:disabled { opacity: 0.4; cursor: default; }
     &:active:not(:disabled) { opacity: 0.7; }
   }
 
-  /* ===== 设置面板 ===== */
+  /* ===== 设置面板（Popover） ===== */
   .settings-bar {
-    background: var(--settings-bg); padding: 10px 16px;
-    border-top: 1px solid var(--settings-border);
-    display: flex; flex-direction: column; gap: 8px; font-size: 13px;
-    transition: background 0.2s, border-color 0.2s, color 0.2s;
+    position: fixed; inset: auto 0 0 0; margin: 0; border: none;
+    border-top: 1px solid var(--border);
+    border-radius: 16px 16px 0 0;
+    padding: 16px; background: var(--settings-bg); color: var(--text);
+    display: flex; flex-direction: column; gap: 10px; font-size: 13px;
+    box-shadow: 0 -4px 24px rgba(0,0,0,0.15);
+    max-height: 70vh; overflow-y: auto;
+    transition: background 0.2s, color 0.2s, border-color 0.2s;
+  }
+
+  .settings-bar::backdrop {
+    background: var(--dialog-overlay);
+    backdrop-filter: blur(2px);
   }
 
   .settings-row {
@@ -272,10 +258,8 @@
       padding: 6px 10px; font-size: 13px; outline: none;
       background: var(--input-bg); color: var(--text);
       transition: background 0.2s, border-color 0.2s, color 0.2s;
-
       &:focus { border-color: #007aff; }
     }
-
     & select { appearance: auto; }
   }
 
@@ -285,7 +269,6 @@
     resize: vertical; min-height: 50px; max-height: 120px; outline: none;
     background: var(--input-bg); color: var(--text);
     transition: background 0.2s, border-color 0.2s, color 0.2s;
-
     &:focus { border-color: #007aff; }
   }
 
@@ -297,16 +280,48 @@
   .danger-btn {
     background: #ff3b30; color: #fff; border: none;
     border-radius: 8px; padding: 6px 12px; font-size: 12px; cursor: pointer;
-
     &:active { opacity: 0.7; }
   }
 
   .security-note {
     font-size: 11px; color: var(--text-secondary); line-height: 1.4;
     padding: 6px 8px; background: var(--security-bg); border-radius: 6px;
-
     & strong { color: var(--security-text); }
   }
+
+  /* ===== Dialog ===== */
+  dialog {
+    border: none; border-radius: 16px; padding: 0;
+    background: var(--card-bg); color: var(--text);
+    max-width: 320px; width: 85%;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.2);
+    transition: background 0.2s, color 0.2s;
+  }
+  dialog::backdrop {
+    background: var(--dialog-overlay);
+    backdrop-filter: blur(3px);
+  }
+  .dialog-body { padding: 20px 20px 0; font-size: 14px; line-height: 1.5; }
+  .dialog-actions {
+    display: flex; gap: 8px; justify-content: flex-end;
+    padding: 16px 20px;
+  }
+  .dialog-actions button {
+    border: none; border-radius: 10px; padding: 8px 20px;
+    font-size: 14px; cursor: pointer; font-family: inherit;
+  }
+  .dialog-actions .btn-cancel { background: var(--input-bg); color: var(--text); }
+  .dialog-actions .btn-confirm { background: #007aff; color: #fff; }
+  .dialog-actions .btn-ok { background: #007aff; color: #fff; min-width: 80px; }
+
+  /* ===== 贴士 ===== */
+  #toast {
+    position: fixed; bottom: 120px; left: 50%; transform: translateX(-50%);
+    background: rgba(0,0,0,0.75); color: #fff; padding: 8px 20px;
+    border-radius: 10px; font-size: 13px;
+    opacity: 0; transition: opacity 0.3s ease; pointer-events: none; z-index: 999;
+  }
+  #toast.show { opacity: 1; }
 
   #tokenTotal {
     font-size: 11px; color: var(--text-secondary);
@@ -323,6 +338,7 @@
     <small>v1.0</small>
   </div>
   <div class="header-right">
+    <button class="icon-btn" id="shareBtn" title="分享对话">⬆</button>
     <button class="icon-btn" id="searchBtn" title="搜索对话">🔍</button>
     <button class="icon-btn" id="themeBtn" title="切换主题">🌙</button>
   </div>
@@ -339,7 +355,8 @@
 </div>
 <div id="tokenTotal"></div>
 
-<div class="settings-bar hidden" id="settingsBar">
+<!-- 设置面板 Popover -->
+<div class="settings-bar" id="settingsBar" popover>
   <div class="settings-row">
     <span style="white-space:nowrap">🔑 API Key:</span>
     <input type="password" id="apiKeyInput" placeholder="sk-..." autocomplete="off">
@@ -371,12 +388,21 @@
       <input type="checkbox" id="sessionOnlyCheck"> 关闭标签页后清除 Key
     </label>
   </div>
-  <div class="security-note" id="securityNote">
+  <div class="security-note">
     <strong>⚠️ 安全提醒：</strong>API Key 仅保存在此浏览器中。
     <span id="keyStatus">默认保存在浏览器中，关闭标签页后不会丢失。</span>
     请不要将这个页面的地址分享给他人。
   </div>
 </div>
+
+<!-- 确认对话框 -->
+<dialog id="confirmDialog">
+  <div class="dialog-body" id="dialogBody">确认操作？</div>
+  <div class="dialog-actions" id="dialogActions"></div>
+</dialog>
+
+<!-- 贴士 -->
+<div id="toast"></div>
 
 <div class="file-preview-bar" id="filePreviewBar"></div>
 <div class="input-bar">
@@ -385,7 +411,7 @@
     <input type="file" id="fileInput" multiple accept="image/*,.txt,.md,.json,.js,.py,.ts,.html,.css,.csv,.xml,.yaml,.yml,.log,.sh" style="display:none">
     <button class="action-btn" id="fileBtn" title="上传文件">📎</button>
     <button class="send-btn" id="sendBtn">↑</button>
-    <button class="settings-toggle" id="toggleSettingsBtn" style="width:auto;height:42px;padding:0 12px;border-radius:21px">⚙️</button>
+    <button class="settings-toggle" id="toggleSettingsBtn" style="width:auto;height:42px;padding:0 12px;border-radius:21px" popovertarget="settingsBar">⚙️</button>
   </div>
 </div>
 
@@ -394,7 +420,6 @@
 const chatEl = document.getElementById('chat');
 const inputEl = document.getElementById('input');
 const sendBtn = document.getElementById('sendBtn');
-const settingsBar = document.getElementById('settingsBar');
 const toggleSettingsBtn = document.getElementById('toggleSettingsBtn');
 const saveSettingsBtn = document.getElementById('saveSettingsBtn');
 const clearDataBtn = document.getElementById('clearDataBtn');
@@ -415,9 +440,105 @@ const searchCloseBtn = document.getElementById('searchCloseBtn');
 const matchCount = document.getElementById('matchCount');
 const roleSelect = document.getElementById('roleSelect');
 const systemPromptInput = document.getElementById('systemPromptInput');
+const shareBtn = document.getElementById('shareBtn');
+const confirmDialog = document.getElementById('confirmDialog');
+const dialogBody = document.getElementById('dialogBody');
+const dialogActions = document.getElementById('dialogActions');
+const toast = document.getElementById('toast');
 
 let selectedFiles = [];
 let sessionTotalTokens = 0;
+
+// ========== 统一的对话框 ==========
+function showDialog(msg, buttons) {
+  return new Promise(resolve => {
+    dialogBody.textContent = msg;
+    dialogActions.innerHTML = '';
+    buttons.forEach((b, i) => {
+      const btn = document.createElement('button');
+      btn.textContent = b.label;
+      btn.className = b.className || 'btn-ok';
+      btn.addEventListener('click', () => { confirmDialog.close(); resolve(b.value); });
+      dialogActions.appendChild(btn);
+    });
+    confirmDialog.showModal();
+  });
+}
+
+function showConfirm(msg) {
+  return showDialog(msg, [
+    { label: '取消', value: false, className: 'btn-cancel' },
+    { label: '确定', value: true, className: 'btn-confirm' }
+  ]);
+}
+
+function showAlert(msg) {
+  return showDialog(msg, [
+    { label: '知道了', value: true, className: 'btn-ok' }
+  ]);
+}
+
+// ========== 贴士 ==========
+function showToast(text) {
+  toast.textContent = text;
+  toast.classList.add('show');
+  clearTimeout(toast._timer);
+  toast._timer = setTimeout(() => toast.classList.remove('show'), 1800);
+}
+
+// ========== 复制消息文本 ==========
+chatEl.addEventListener('click', (e) => {
+  const msg = e.target.closest('.msg');
+  if (!msg || msg.classList.contains('typing')) return;
+
+  const text = msg.textContent
+    .replace(/输入 \d+ tokens  ·  输出 \d+ tokens  ·  总计 \d+ tokens/g, '')
+    .replace(/🖼️ .+?(\s|$)/g, '')
+    .replace(/📄 .+?(\s|$)/g, '')
+    .trim();
+
+  if (!text) return;
+
+  navigator.clipboard.writeText(text).then(() => {
+    showToast('已复制');
+  }).catch(() => {
+    // 降级：选中文本
+    const range = document.createRange();
+    range.selectNodeContents(msg);
+    const sel = window.getSelection();
+    sel.removeAllRanges(); sel.addRange(range);
+    showToast('已复制');
+  });
+});
+
+// ========== Web Share ==========
+shareBtn.addEventListener('click', async () => {
+  const msgs = chatEl.querySelectorAll('.msg');
+  if (msgs.length <= 1) { showToast('没有可分享的对话'); return; }
+
+  const lines = [];
+  msgs.forEach(m => {
+    const role = m.classList.contains('user') ? '👤' : '🤖';
+    const text = m.textContent.replace(/输入 \d+ tokens.*/g, '').trim();
+    if (text) lines.push(role + ' ' + text);
+  });
+  const content = lines.join('\n\n');
+
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: 'DeepSeek 对话', text: content });
+    } catch (e) {
+      if (e.name !== 'AbortError') showToast('分享已取消');
+    }
+  } else {
+    try {
+      await navigator.clipboard.writeText(content);
+      showToast('对话已复制到剪贴板，可粘贴分享');
+    } catch {
+      showToast('复制失败');
+    }
+  }
+});
 
 // ========== 预设角色 ==========
 const ROLES = {
@@ -430,12 +551,10 @@ const ROLES = {
 
 roleSelect.addEventListener('change', () => {
   const role = ROLES[roleSelect.value];
-  if (role) {
-    systemPromptInput.value = role.prompt;
-  }
+  if (role) systemPromptInput.value = role.prompt;
 });
 
-// ========== 主题切换 ==========
+// ========== 主题切换 + View Transitions ==========
 let currentTheme = localStorage.getItem('deepseek_theme') || 'light';
 
 function applyTheme(theme) {
@@ -447,29 +566,26 @@ function applyTheme(theme) {
 applyTheme(currentTheme);
 
 themeBtn.addEventListener('click', () => {
-  applyTheme(currentTheme === 'dark' ? 'light' : 'dark');
+  const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+  if (document.startViewTransition) {
+    document.startViewTransition(() => applyTheme(newTheme));
+  } else {
+    applyTheme(newTheme);
+  }
 });
 
 // ========== 搜索 ==========
 searchBtn.addEventListener('click', () => {
   searchBar.classList.toggle('open');
-  if (searchBar.classList.contains('open')) {
-    searchInput.focus();
-  } else {
-    clearSearch();
-  }
+  if (searchBar.classList.contains('open')) searchInput.focus();
+  else clearSearch();
 });
 
-searchCloseBtn.addEventListener('click', () => {
-  searchBar.classList.remove('open');
-  clearSearch();
-});
-
+searchCloseBtn.addEventListener('click', () => { searchBar.classList.remove('open'); clearSearch(); });
 searchInput.addEventListener('input', doSearch);
 
 function clearSearch() {
-  searchInput.value = '';
-  matchCount.textContent = '';
+  searchInput.value = ''; matchCount.textContent = '';
   document.querySelectorAll('.msg.search-highlight').forEach(el => el.classList.remove('search-highlight'));
 }
 
@@ -477,22 +593,15 @@ function doSearch() {
   const q = searchInput.value.trim().toLowerCase();
   document.querySelectorAll('.msg.search-highlight').forEach(el => el.classList.remove('search-highlight'));
 
-  if (!q) {
-    matchCount.textContent = '';
-    return;
-  }
+  if (!q) { matchCount.textContent = ''; return; }
 
   const msgs = chatEl.querySelectorAll('.msg');
   let count = 0;
   msgs.forEach(msg => {
-    if (msg.textContent.toLowerCase().includes(q)) {
-      msg.classList.add('search-highlight');
-      count++;
-    }
+    if (msg.textContent.toLowerCase().includes(q)) { msg.classList.add('search-highlight'); count++; }
   });
 
   matchCount.textContent = count > 0 ? count + ' 条匹配' : '无匹配';
-
   if (count > 0) {
     const first = chatEl.querySelector('.msg.search-highlight');
     if (first) first.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -500,76 +609,45 @@ function doSearch() {
 }
 
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && searchBar.classList.contains('open')) {
-    searchBar.classList.remove('open');
-    clearSearch();
-  }
-  if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
-    e.preventDefault();
-    searchBar.classList.add('open');
-    searchInput.focus();
-  }
+  if (e.key === 'Escape' && searchBar.classList.contains('open')) { searchBar.classList.remove('open'); clearSearch(); }
+  if ((e.ctrlKey || e.metaKey) && e.key === 'f') { e.preventDefault(); searchBar.classList.add('open'); searchInput.focus(); }
 });
 
 // ========== 安全配置 ==========
 const ALLOWED_API_HOSTS = ['api.deepseek.com', 'api.deepseek.com.cn'];
 
 function isValidApiUrl(url) {
-  try {
-    const parsed = new URL(url);
-    return ALLOWED_API_HOSTS.includes(parsed.hostname) && parsed.protocol === 'https:';
-  } catch {
-    return false;
-  }
+  try { const p = new URL(url); return ALLOWED_API_HOSTS.includes(p.hostname) && p.protocol === 'https:'; }
+  catch { return false; }
 }
 
 // ========== 存储读写 ==========
 function getStoredKey() {
-  const key = sessionStorage.getItem('deepseek_api_key');
-  if (key) return key;
-  if (!sessionOnlyCheck.checked) {
-    return localStorage.getItem('deepseek_api_key') || '';
-  }
+  const k = sessionStorage.getItem('deepseek_api_key');
+  if (k) return k;
+  if (!sessionOnlyCheck.checked) return localStorage.getItem('deepseek_api_key') || '';
   return '';
 }
 
 function setStoredKey(key) {
-  if (sessionOnlyCheck.checked) {
-    sessionStorage.setItem('deepseek_api_key', key);
-    localStorage.removeItem('deepseek_api_key');
-  } else {
-    localStorage.setItem('deepseek_api_key', key);
-  }
+  if (sessionOnlyCheck.checked) { sessionStorage.setItem('deepseek_api_key', key); localStorage.removeItem('deepseek_api_key'); }
+  else { localStorage.setItem('deepseek_api_key', key); }
 }
 
-function removeStoredKey() {
-  sessionStorage.removeItem('deepseek_api_key');
-  localStorage.removeItem('deepseek_api_key');
-}
-
-function getStoredUrl() {
-  return localStorage.getItem('deepseek_api_url') || 'https://api.deepseek.com';
-}
-
-function setStoredUrl(url) {
-  localStorage.setItem('deepseek_api_url', url);
-}
+function removeStoredKey() { sessionStorage.removeItem('deepseek_api_key'); localStorage.removeItem('deepseek_api_key'); }
+function getStoredUrl() { return localStorage.getItem('deepseek_api_url') || 'https://api.deepseek.com'; }
+function setStoredUrl(url) { localStorage.setItem('deepseek_api_url', url); }
 
 // ========== 从存储恢复 ==========
 apiKeyInput.value = getStoredKey();
 apiUrlInput.value = getStoredUrl();
 systemPromptInput.value = localStorage.getItem('deepseek_system_prompt') || '';
 
-if (localStorage.getItem('deepseek_session_only') === 'false') {
-  sessionOnlyCheck.checked = false;
-}
+if (localStorage.getItem('deepseek_session_only') === 'false') sessionOnlyCheck.checked = false;
 updateKeyStatusText();
 
-// 恢复角色选择
 const savedRole = localStorage.getItem('deepseek_role') || '';
-if (savedRole && ROLES[savedRole]) {
-  roleSelect.value = savedRole;
-}
+if (savedRole && ROLES[savedRole]) roleSelect.value = savedRole;
 
 // ========== API Key 切换显示 ==========
 let keyVisible = false;
@@ -577,79 +655,57 @@ toggleKeyBtn.addEventListener('click', () => {
   keyVisible = !keyVisible;
   apiKeyInput.type = keyVisible ? 'text' : 'password';
   toggleKeyBtn.textContent = keyVisible ? '隐藏' : '显示';
-  if (keyVisible) {
-    setTimeout(() => {
-      apiKeyInput.type = 'password';
-      keyVisible = false;
-      toggleKeyBtn.textContent = '显示';
-    }, 3000);
-  }
+  if (keyVisible) setTimeout(() => { apiKeyInput.type = 'password'; keyVisible = false; toggleKeyBtn.textContent = '显示'; }, 3000);
 });
 
 function updateKeyStatusText() {
-  if (sessionOnlyCheck.checked) {
-    keyStatus.textContent = '关闭标签页后自动清除。';
-  } else {
-    keyStatus.textContent = '保存在 localStorage 中，关闭浏览器也不会清除。';
-  }
+  keyStatus.textContent = sessionOnlyCheck.checked ? '关闭标签页后自动清除。' : '保存在 localStorage 中，关闭浏览器也不会清除。';
 }
 
 sessionOnlyCheck.addEventListener('change', () => {
   updateKeyStatusText();
   localStorage.setItem('deepseek_session_only', sessionOnlyCheck.checked);
-  const currentKey = apiKeyInput.value.trim();
-  if (currentKey) setStoredKey(currentKey);
+  const k = apiKeyInput.value.trim();
+  if (k) setStoredKey(k);
 });
 
-// ========== 设置面板 ==========
-toggleSettingsBtn.addEventListener('click', () => {
-  settingsBar.classList.toggle('hidden');
-});
-
+// ========== 设置（Popover） ==========
 saveSettingsBtn.addEventListener('click', () => {
   const key = apiKeyInput.value.trim();
   const url = apiUrlInput.value.trim();
-
   if (!key) { apiKeyInput.focus(); return; }
 
-  if (!isValidApiUrl(url)) {
-    if (!confirm('⚠️ API 地址不在白名单中，继续保存？\n\n仅信任以下地址：\n' + ALLOWED_API_HOSTS.join('\n') + '\n\n输入任意 API 地址可能导致 Key 泄露给第三方。')) {
-      return;
+  (async () => {
+    if (!isValidApiUrl(url)) {
+      const ok = await showConfirm('⚠️ API 地址不在白名单中，继续保存？\n\n仅信任以下地址：\n' + ALLOWED_API_HOSTS.join('\n') + '\n\n输入任意 API 地址可能导致 Key 泄露给第三方。');
+      if (!ok) return;
     }
-  }
 
-  setStoredKey(key);
-  if (isValidApiUrl(url)) setStoredUrl(url);
-
-  // 保存系统提示词和角色
-  localStorage.setItem('deepseek_system_prompt', systemPromptInput.value);
-  localStorage.setItem('deepseek_role', roleSelect.value);
-
-  settingsBar.classList.add('hidden');
+    setStoredKey(key);
+    if (isValidApiUrl(url)) setStoredUrl(url);
+    localStorage.setItem('deepseek_system_prompt', systemPromptInput.value);
+    localStorage.setItem('deepseek_role', roleSelect.value);
+    settingsBar.hidePopover();
+  })();
 });
 
-clearDataBtn.addEventListener('click', () => {
-  if (confirm('确定清除所有数据？\n\n将清除 API Key、API 地址、提示词、角色和设置。')) {
-    removeStoredKey();
-    localStorage.removeItem('deepseek_api_url');
-    localStorage.removeItem('deepseek_session_only');
-    localStorage.removeItem('deepseek_system_prompt');
-    localStorage.removeItem('deepseek_role');
-    apiKeyInput.value = '';
-    apiUrlInput.value = 'https://api.deepseek.com';
-    systemPromptInput.value = '';
-    roleSelect.value = '';
-    settingsBar.classList.add('hidden');
-    sessionTotalTokens = 0;
-    updateTokenTotal();
-  }
+clearDataBtn.addEventListener('click', async () => {
+  const ok = await showConfirm('确定清除所有数据？\n\n将清除 API Key、API 地址、提示词、角色和设置。');
+  if (!ok) return;
+
+  removeStoredKey();
+  localStorage.removeItem('deepseek_api_url');
+  localStorage.removeItem('deepseek_session_only');
+  localStorage.removeItem('deepseek_system_prompt');
+  localStorage.removeItem('deepseek_role');
+  apiKeyInput.value = ''; apiUrlInput.value = 'https://api.deepseek.com';
+  systemPromptInput.value = ''; roleSelect.value = '';
+  sessionTotalTokens = 0; updateTokenTotal();
+  settingsBar.hidePopover();
 });
 
 // ========== 输入框 ==========
-inputEl.addEventListener('input', () => {
-  inputEl.style.height = 'auto';
-  inputEl.style.height = inputEl.scrollHeight + 'px';
-});
+inputEl.addEventListener('input', () => { inputEl.style.height = 'auto'; inputEl.style.height = inputEl.scrollHeight + 'px'; });
 
 // ========== 文件上传 ==========
 const TEXT_EXTENSIONS = ['txt','md','json','js','py','ts','html','css','csv','xml','yaml','yml','log','sh'];
@@ -658,11 +714,10 @@ const MAX_FILE_SIZE = 20 * 1024 * 1024;
 fileBtn.addEventListener('click', () => fileInput.click());
 
 fileInput.addEventListener('change', async (e) => {
-  const files = Array.from(e.target.files);
-  for (const file of files) {
-    if (file.size > MAX_FILE_SIZE) { alert('文件 "' + file.name + '" 超过 20MB 限制，已跳过'); continue; }
+  for (const file of Array.from(e.target.files)) {
+    if (file.size > MAX_FILE_SIZE) { await showAlert('文件 "' + file.name + '" 超过 20MB 限制，已跳过'); continue; }
     try { selectedFiles.push(await readFile(file)); }
-    catch(err) { alert('读取文件失败: ' + file.name); }
+    catch { await showAlert('读取文件失败: ' + file.name); }
   }
   fileInput.value = '';
   renderFilePreviews();
@@ -674,13 +729,9 @@ function readFile(file) {
     const isImage = file.type.startsWith('image/');
     const isText = TEXT_EXTENSIONS.includes(ext);
 
-    if (isImage) {
-      const r = new FileReader(); r.onload = () => resolve({ name: file.name, size: file.size, type: 'image', data: r.result, ext }); r.onerror = reject; r.readAsDataURL(file);
-    } else if (isText) {
-      const r = new FileReader(); r.onload = () => resolve({ name: file.name, size: file.size, type: 'text', data: r.result, ext }); r.onerror = reject; r.readAsText(file);
-    } else {
-      resolve({ name: file.name, size: file.size, type: 'unknown', data: null, ext });
-    }
+    if (isImage) { const r = new FileReader(); r.onload = () => resolve({ name: file.name, size: file.size, type: 'image', data: r.result, ext }); r.onerror = reject; r.readAsDataURL(file); }
+    else if (isText) { const r = new FileReader(); r.onload = () => resolve({ name: file.name, size: file.size, type: 'text', data: r.result, ext }); r.onerror = reject; r.readAsText(file); }
+    else { resolve({ name: file.name, size: file.size, type: 'unknown', data: null, ext }); }
   });
 }
 
@@ -693,14 +744,9 @@ function formatFileSize(bytes) {
 function renderFilePreviews() {
   filePreviewBar.innerHTML = '';
   selectedFiles.forEach((f, i) => {
-    const chip = document.createElement('div');
-    chip.className = 'file-chip';
-
-    if (f.type === 'image') {
-      const img = document.createElement('img'); img.src = f.data; img.alt = f.name; chip.appendChild(img);
-    } else {
-      const icon = document.createElement('span'); icon.className = 'file-icon'; icon.textContent = '📄'; chip.appendChild(icon);
-    }
+    const chip = document.createElement('div'); chip.className = 'file-chip';
+    if (f.type === 'image') { const img = document.createElement('img'); img.src = f.data; img.alt = f.name; chip.appendChild(img); }
+    else { const icon = document.createElement('span'); icon.className = 'file-icon'; icon.textContent = '📄'; chip.appendChild(icon); }
 
     const info = document.createElement('div'); info.className = 'file-info';
     const nameSpan = document.createElement('div'); nameSpan.className = 'file-name'; nameSpan.textContent = f.name;
@@ -719,14 +765,11 @@ function addMessage(role, text, tokens, files) {
   const div = document.createElement('div');
   div.className = 'msg ' + role.replace(/[^a-z]/g, '');
 
-  const textSpan = document.createElement('span');
-  textSpan.textContent = text;
-  div.appendChild(textSpan);
+  const textSpan = document.createElement('span'); textSpan.textContent = text; div.appendChild(textSpan);
 
   if (files && files.length > 0) {
-    const fileInfo = document.createElement('div'); fileInfo.className = 'file-attach';
-    fileInfo.textContent = files.map(f => (f.type === 'image' ? '🖼️ ' : '📄 ') + f.name).join('  ');
-    div.appendChild(fileInfo);
+    const fi = document.createElement('div'); fi.className = 'file-attach';
+    fi.textContent = files.map(f => (f.type === 'image' ? '🖼️ ' : '📄 ') + f.name).join('  '); div.appendChild(fi);
   }
 
   if (tokens) {
@@ -735,12 +778,10 @@ function addMessage(role, text, tokens, files) {
     if (tokens.prompt !== undefined) parts.push('输入 ' + tokens.prompt + ' tokens');
     if (tokens.completion !== undefined) parts.push('输出 ' + tokens.completion + ' tokens');
     if (tokens.total !== undefined) parts.push('总计 ' + tokens.total + ' tokens');
-    info.textContent = parts.join('  ·  ');
-    div.appendChild(info);
+    info.textContent = parts.join('  ·  '); div.appendChild(info);
   }
 
-  chatEl.appendChild(div);
-  chatEl.scrollTop = chatEl.scrollHeight;
+  chatEl.appendChild(div); chatEl.scrollTop = chatEl.scrollHeight;
   return div;
 }
 
@@ -754,9 +795,7 @@ function showTyping() {
   chatEl.appendChild(div); chatEl.scrollTop = chatEl.scrollHeight;
 }
 
-function removeTyping() {
-  const el = document.getElementById('typingIndicator'); if (el) el.remove();
-}
+function removeTyping() { const el = document.getElementById('typingIndicator'); if (el) el.remove(); }
 
 // ========== 发送消息 ==========
 async function sendMessage() {
@@ -766,13 +805,12 @@ async function sendMessage() {
   const apiKey = apiKeyInput.value.trim();
   const apiUrl = apiUrlInput.value.trim();
 
-  if (!apiKey) { settingsBar.classList.remove('hidden'); apiKeyInput.focus(); return; }
+  if (!apiKey) { settingsBar.showPopover(); apiKeyInput.focus(); return; }
   if (!isValidApiUrl(apiUrl)) {
     addMessage('assistant', '❌ 无效的 API 地址。请点击 ⚙️ 设置正确的 API 地址（api.deepseek.com）');
-    settingsBar.classList.remove('hidden'); return;
+    settingsBar.showPopover(); return;
   }
 
-  // 构建消息
   let userContent;
   const hasImages = selectedFiles.some(f => f.type === 'image');
 
@@ -802,7 +840,6 @@ async function sendMessage() {
   showTyping(); sendBtn.disabled = true;
   selectedFiles = []; renderFilePreviews();
 
-  // 构建请求消息列表
   const systemPrompt = systemPromptInput.value.trim();
   const messages = [];
   if (systemPrompt) messages.push({ role: 'system', content: systemPrompt });
@@ -815,15 +852,16 @@ async function sendMessage() {
     const resp = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
-      body: JSON.stringify({ model: 'deepseek-chat', messages, stream: false })
+      body: JSON.stringify({ model: 'deepseek-chat', messages, stream: false }),
+      priority: 'high',
     });
 
     removeTyping();
 
     if (!resp.ok) {
-      let errMsg; const errStatus = resp.status;
-      try { const errBody = await resp.text(); if (errBody.length < 1000) { const j = JSON.parse(errBody); errMsg = j.error?.message; } } catch(e) {}
-      addMessage('assistant', '❌ 请求失败 (' + errStatus + ')' + (errMsg ? ': ' + errMsg : ''));
+      let errMsg; const s = resp.status;
+      try { const b = await resp.text(); if (b.length < 1000) { const j = JSON.parse(b); errMsg = j.error?.message; } } catch(e) {}
+      addMessage('assistant', '❌ 请求失败 (' + s + ')' + (errMsg ? ': ' + errMsg : ''));
       sendBtn.disabled = false; return;
     }
 
@@ -835,25 +873,21 @@ async function sendMessage() {
     const tokens = (p !== undefined && c !== undefined) ? { prompt: p, completion: c, total: t } : null;
 
     addMessage('assistant', reply, tokens);
-
     if (t !== undefined) { sessionTotalTokens += t; updateTokenTotal(); }
 
   } catch (err) {
     removeTyping();
     addMessage('assistant', '❌ 网络请求失败，请检查网络连接后重试。');
+    throw new Error('DeepSeek API 请求失败', { cause: err });
   }
   sendBtn.disabled = false;
 }
 
 sendBtn.addEventListener('click', sendMessage);
-inputEl.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
-});
+inputEl.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } });
 
 // ========== PWA 注册 ==========
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js').catch(() => {});
-}
+if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').catch(() => {}); }
 
 })();
 </script>
