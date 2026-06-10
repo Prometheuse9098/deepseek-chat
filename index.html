@@ -124,7 +124,7 @@ dialog::backdrop{background:var(--dialog-overlay);backdrop-filter:blur(3px)}
 <div id="chat"><div class="msg assistant">你好！我是 DeepSeek，有什么可以帮助你的？</div></div>
 <div id="tokenTotal"></div>
 
-<div class="settings-bar" id="settingsBar" popover>
+<div class="settings-bar" id="settingsBar" popover="manual">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:-4px">
     <span style="font-weight:600;font-size:14px">设置</span>
     <button id="settingsCloseBtn" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-secondary);padding:4px">✕</button>
@@ -184,7 +184,7 @@ dialog::backdrop{background:var(--dialog-overlay);backdrop-filter:blur(3px)}
     <button class="icon-round" id="micBtn" title="语音输入" style="display:none">🎤</button>
     <button class="icon-round" id="searchToggleBtn" title="联网搜索">🌐</button>
     <button class="send-btn" id="sendBtn">↑</button>
-    <button class="settings-toggle" id="toggleSettingsBtn" style="width:auto;height:40px;padding:0 12px;border-radius:20px" popovertarget="settingsBar">⚙️</button>
+    <button class="settings-toggle" id="toggleSettingsBtn" style="width:auto;height:40px;padding:0 12px;border-radius:20px">⚙️</button>
   </div>
 </div>
 
@@ -200,6 +200,7 @@ const shareBtn=$('shareBtn'),confirmDialog=$('confirmDialog'),dialogBody=$('dial
 const searchToggleBtn=$('searchToggleBtn'),saveSettingsBtn=$('saveSettingsBtn'),clearDataBtn=$('clearDataBtn'),toggleSettingsBtn=$('toggleSettingsBtn');
 const micBtn=$('micBtn'),modelSelect=$('modelSelect'),tempRange=$('tempRange'),tempValue=$('tempValue'),maxTokensRange=$('maxTokensRange'),maxTokensValue=$('maxTokensValue');
 const msgMenu=$('msgMenu'),menuCopy=$('menuCopy'),menuDelete=$('menuDelete'),menuResend=$('menuResend');
+const settingsBar=$('settingsBar');
 
 let sessionTotalTokens=0,enableWebSearch=localStorage.getItem('deepseek_web_search')==='true';
 let messageHistory=[],scrollLocked=false,streamAbortController=null,retryCount=0;
@@ -392,8 +393,11 @@ clearDataBtn.addEventListener('click',async()=>{
   settingsBar.hidePopover()
 });
 
-// ========== 设置关闭 ==========
-$('settingsCloseBtn').addEventListener('click',()=>{$('settingsBar').hidePopover()});
+// ========== 设置面板控制 ==========
+$('toggleSettingsBtn').addEventListener('click',()=>{if(settingsBar.matches(':popover-open'))settingsBar.hidePopover();else settingsBar.showPopover()});
+$('settingsCloseBtn').addEventListener('click',()=>{settingsBar.hidePopover()});
+// 点击外部关闭
+document.addEventListener('click',(e)=>{if(settingsBar.matches(':popover-open')&&!e.target.closest('#settingsBar')&&!e.target.closest('#toggleSettingsBtn'))settingsBar.hidePopover()});
 
 // ========== 输入框 ==========
 inputEl.addEventListener('input',()=>{inputEl.style.height='auto';inputEl.style.height=inputEl.scrollHeight+'px'});
