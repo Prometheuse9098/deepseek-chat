@@ -125,11 +125,6 @@
       align-self: flex-end; background: #007aff; color: #fff;
       border-bottom-right-radius: 6px;
 
-      & .file-attach {
-        border-top: 1px solid rgba(255,255,255,0.25);
-        margin-top: 6px; padding-top: 6px; font-size: 11px;
-        opacity: 0.8; display: flex; gap: 6px; flex-wrap: wrap;
-      }
     }
 
     &.assistant {
@@ -173,28 +168,6 @@
     }
   }
   @keyframes bounce { 0%,80%,100% { transform: scale(0.6); } 40% { transform: scale(1); } }
-
-  /* ===== 文件预览 ===== */
-  .file-preview-bar {
-    background: var(--card-bg); padding: 6px 14px; border-top: 1px solid var(--border);
-    display: flex; gap: 8px; overflow-x: auto; min-height: 0;
-    transition: background 0.2s, border-color 0.2s, padding 0.2s;
-    &:empty { padding: 0; }
-  }
-
-  .file-chip {
-    flex-shrink: 0; display: flex; align-items: center; gap: 6px;
-    background: var(--chip-bg); border-radius: 8px; padding: 4px 8px;
-    font-size: 12px; max-width: 200px; color: var(--chip-text);
-    transition: background 0.2s, color 0.2s;
-
-    & img { width: 28px; height: 28px; border-radius: 4px; object-fit: cover; }
-    & .file-icon { font-size: 18px; }
-    & .file-info { overflow: hidden; }
-    & .file-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 11px; }
-    & .file-size { font-size: 10px; opacity: 0.6; }
-    & .file-remove { cursor: pointer; font-size: 14px; opacity: 0.5; flex-shrink: 0; background: none; border: none; color: inherit; padding: 0 2px; &:hover { opacity: 1; } }
-  }
 
   /* ===== 输入栏 ===== */
   .input-bar {
@@ -417,12 +390,9 @@
 <!-- 贴士 -->
 <div id="toast"></div>
 
-<div class="file-preview-bar" id="filePreviewBar"></div>
 <div class="input-bar">
   <textarea id="input" rows="1" placeholder="输入消息..."></textarea>
   <div class="input-actions">
-    <input type="file" id="fileInput" multiple accept="image/*,.txt,.md,.json,.js,.py,.ts,.html,.css,.csv,.xml,.yaml,.yml,.log,.sh" style="display:none">
-    <button class="action-btn" id="fileBtn" title="上传文件">📎</button>
     <button class="search-btn" id="searchToggleBtn" title="联网搜索">🌐</button>
     <button class="send-btn" id="sendBtn">↑</button>
     <button class="settings-toggle" id="toggleSettingsBtn" style="width:auto;height:42px;padding:0 12px;border-radius:21px" popovertarget="settingsBar">⚙️</button>
@@ -444,9 +414,6 @@ const sessionOnlyCheck = document.getElementById('sessionOnlyCheck');
 const keyStatus = document.getElementById('keyStatus');
 const themeBtn = document.getElementById('themeBtn');
 const tokenTotalEl = document.getElementById('tokenTotal');
-const fileInput = document.getElementById('fileInput');
-const fileBtn = document.getElementById('fileBtn');
-const filePreviewBar = document.getElementById('filePreviewBar');
 const searchBtn = document.getElementById('searchBtn');
 const searchBar = document.getElementById('searchBar');
 const searchInput = document.getElementById('searchInput');
@@ -461,7 +428,6 @@ const dialogBody = document.getElementById('dialogBody');
 const dialogActions = document.getElementById('dialogActions');
 const toast = document.getElementById('toast');
 
-let selectedFiles = [];
 let sessionTotalTokens = 0;
 let enableWebSearch = localStorage.getItem('deepseek_web_search') === 'true';
 
@@ -739,69 +705,12 @@ clearDataBtn.addEventListener('click', async () => {
 inputEl.addEventListener('input', () => { inputEl.style.height = 'auto'; inputEl.style.height = inputEl.scrollHeight + 'px'; });
 
 // ========== 文件上传 ==========
-const TEXT_EXTENSIONS = ['txt','md','json','js','py','ts','html','css','csv','xml','yaml','yml','log','sh'];
-const MAX_FILE_SIZE = 20 * 1024 * 1024;
-
-fileBtn.addEventListener('click', () => fileInput.click());
-
-fileInput.addEventListener('change', async (e) => {
-  for (const file of Array.from(e.target.files)) {
-    if (file.size > MAX_FILE_SIZE) { await showAlert('文件 "' + file.name + '" 超过 20MB 限制，已跳过'); continue; }
-    try { selectedFiles.push(await readFile(file)); }
-    catch { await showAlert('读取文件失败: ' + file.name); }
-  }
-  fileInput.value = '';
-  renderFilePreviews();
-});
-
-function readFile(file) {
-  return new Promise((resolve, reject) => {
-    const ext = file.name.split('.').pop()?.toLowerCase() || '';
-    const isImage = file.type.startsWith('image/');
-    const isText = TEXT_EXTENSIONS.includes(ext);
-
-    if (isImage) { const r = new FileReader(); r.onload = () => resolve({ name: file.name, size: file.size, type: 'image', data: r.result, ext }); r.onerror = reject; r.readAsDataURL(file); }
-    else if (isText) { const r = new FileReader(); r.onload = () => resolve({ name: file.name, size: file.size, type: 'text', data: r.result, ext }); r.onerror = reject; r.readAsText(file); }
-    else { resolve({ name: file.name, size: file.size, type: 'unknown', data: null, ext }); }
-  });
-}
-
-function formatFileSize(bytes) {
-  if (bytes < 1024) return bytes + 'B';
-  if (bytes < 1024*1024) return (bytes/1024).toFixed(1) + 'KB';
-  return (bytes/(1024*1024)).toFixed(1) + 'MB';
-}
-
-function renderFilePreviews() {
-  filePreviewBar.innerHTML = '';
-  selectedFiles.forEach((f, i) => {
-    const chip = document.createElement('div'); chip.className = 'file-chip';
-    if (f.type === 'image') { const img = document.createElement('img'); img.src = f.data; img.alt = f.name; chip.appendChild(img); }
-    else { const icon = document.createElement('span'); icon.className = 'file-icon'; icon.textContent = '📄'; chip.appendChild(icon); }
-
-    const info = document.createElement('div'); info.className = 'file-info';
-    const nameSpan = document.createElement('div'); nameSpan.className = 'file-name'; nameSpan.textContent = f.name;
-    const sizeSpan = document.createElement('div'); sizeSpan.className = 'file-size'; sizeSpan.textContent = formatFileSize(f.size);
-    info.appendChild(nameSpan); info.appendChild(sizeSpan); chip.appendChild(info);
-
-    const rmBtn = document.createElement('button'); rmBtn.className = 'file-remove'; rmBtn.textContent = '✕';
-    rmBtn.addEventListener('click', () => { selectedFiles.splice(i, 1); renderFilePreviews(); });
-    chip.appendChild(rmBtn);
-    filePreviewBar.appendChild(chip);
-  });
-}
-
 // ========== 消息显示 ==========
-function addMessage(role, text, tokens, files) {
+function addMessage(role, text, tokens) {
   const div = document.createElement('div');
   div.className = 'msg ' + role.replace(/[^a-z]/g, '');
 
   const textSpan = document.createElement('span'); textSpan.textContent = text; div.appendChild(textSpan);
-
-  if (files && files.length > 0) {
-    const fi = document.createElement('div'); fi.className = 'file-attach';
-    fi.textContent = files.map(f => (f.type === 'image' ? '🖼️ ' : '📄 ') + f.name).join('  '); div.appendChild(fi);
-  }
 
   if (tokens) {
     const info = document.createElement('div'); info.className = 'token-info';
@@ -831,7 +740,7 @@ function removeTyping() { const el = document.getElementById('typingIndicator');
 // ========== 发送消息 ==========
 async function sendMessage() {
   const text = inputEl.value.trim();
-  if (!text && selectedFiles.length === 0) return;
+  if (!text) return;
 
   const apiKey = apiKeyInput.value.trim();
   const apiUrl = apiUrlInput.value.trim();
@@ -842,39 +751,15 @@ async function sendMessage() {
     settingsBar.showPopover(); return;
   }
 
-  let userContent;
-  const hasImages = selectedFiles.some(f => f.type === 'image');
-
-  if (hasImages) {
-    userContent = [];
-    if (text) userContent.push({ type: 'text', text: text });
-    for (const f of selectedFiles) {
-      if (f.type === 'image') userContent.push({ type: 'image_url', image_url: { url: f.data } });
-      else if (f.type === 'text') userContent.push({ type: 'text', text: '附件 [' + f.name + ']:\n' + f.data });
-      else userContent.push({ type: 'text', text: '[附件: ' + f.name + '] (' + formatFileSize(f.size) + ')' });
-    }
-  } else {
-    userContent = text;
-    const fileTexts = [];
-    for (const f of selectedFiles) {
-      if (f.type === 'text') fileTexts.push('附件 [' + f.name + ']:\n' + f.data);
-      else fileTexts.push('[附件: ' + f.name + '] (' + formatFileSize(f.size) + ')');
-    }
-    if (fileTexts.length > 0) userContent = text ? text + '\n\n---\n' + fileTexts.join('\n\n') : fileTexts.join('\n\n');
-  }
-
-  const filesSnapshot = selectedFiles.slice();
-  const userText = text || '(文件已上传)';
   inputEl.value = ''; inputEl.style.height = 'auto';
 
-  addMessage('user', userText, null, filesSnapshot);
+  addMessage('user', text);
   showTyping(); sendBtn.disabled = true;
-  selectedFiles = []; renderFilePreviews();
 
   const systemPrompt = systemPromptInput.value.trim();
   const messages = [];
   if (systemPrompt) messages.push({ role: 'system', content: systemPrompt });
-  messages.push({ role: 'user', content: userContent });
+  messages.push({ role: 'user', content: text });
 
   const baseUrl = new URL(apiUrl);
   const endpoint = new URL('/v1/chat/completions', baseUrl).toString();
