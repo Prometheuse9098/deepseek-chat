@@ -125,6 +125,10 @@ dialog::backdrop{background:var(--dialog-overlay);backdrop-filter:blur(3px)}
 <div id="tokenTotal"></div>
 
 <div class="settings-bar" id="settingsBar" popover>
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:-4px">
+    <span style="font-weight:600;font-size:14px">设置</span>
+    <button id="settingsCloseBtn" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-secondary);padding:4px">✕</button>
+  </div>
   <div class="settings-row"><span>🔑 API Key:</span> <input type="password" id="apiKeyInput" placeholder="sk-..." autocomplete="off"> <span class="key-visible" id="toggleKeyBtn">显示</span></div>
   <div class="settings-row"><span>🌐 API 地址:</span> <input type="text" id="apiUrlInput" value="https://api.deepseek.com" placeholder="https://api.deepseek.com"></div>
 
@@ -387,6 +391,9 @@ clearDataBtn.addEventListener('click',async()=>{
   messageHistory=[];chatEl.innerHTML='<div class="msg assistant">你好！我是 DeepSeek，有什么可以帮助你的？</div>';
   settingsBar.hidePopover()
 });
+
+// ========== 设置关闭 ==========
+$('settingsCloseBtn').addEventListener('click',()=>{$('settingsBar').hidePopover()});
 
 // ========== 输入框 ==========
 inputEl.addEventListener('input',()=>{inputEl.style.height='auto';inputEl.style.height=inputEl.scrollHeight+'px'});
